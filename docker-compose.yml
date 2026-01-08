@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+
+  backend:
+    build: ./backend
+    container_name: duty_roster_backend
+    restart: always
+    volumes:
+
+      - ./data/database.db:/app/database.db
+    environment:
+      - TZ=Asia/Shanghai
+
+  frontend:
+    build: ./frontend
+    container_name: duty_roster_frontend
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./certs:/etc/nginx/certs:ro
+    depends_on:
+      - backend
+    environment:
+      - TZ=Asia/Shanghai

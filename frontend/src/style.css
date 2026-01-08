@@ -1,0 +1,54 @@
+:root {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  
+  /* 定义全局背景色变量 */
+  --bg-color: #f5f7fa;
+  --text-color: #333333;
+}
+
+/* 1. 强制铺满屏幕，去掉所有默认边距 */
+html, body {
+  margin: 0 !important;
+  padding: 0 !important;
+  width: 100%;
+  height: 100%;
+  background-color: var(--bg-color); /* 确保底色是米白，不是黑 */
+  color: var(--text-color);          /* 确保默认字体是深灰，不是白 */
+  overflow-x: hidden;
+}
+
+/* 2. 修复 #app 容器，确保它撑满屏幕 */
+#app {
+  width: 100vw;
+  height: 100vh;
+  margin: 0 !important;
+  padding: 0 !important;
+  max-width: 100% !important; /* 覆盖 Vite 默认的 1280px 限制 */
+  display: block;             /* 防止 flex 导致的对齐问题 */
+}
+
+/* 3. 滚动条美化 (浅色风格) */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #f1f1f1; 
+}
+::-webkit-scrollbar-thumb {
+  background: #c1c1c1; 
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8; 
+}
+
+/* 4. Naive UI 全局样式修正 (防止组件内部文字变白) */
+.n-card {
+  color: #333 !important;
+}
+.n-input .n-input__input-el {
+  color: #333 !important;
+}
