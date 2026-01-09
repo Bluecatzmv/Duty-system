@@ -332,6 +332,32 @@ async def delete_user(user_id: int, user: User = Depends(check_super_admin), ses
     if target and target.username != "admin": session.delete(target); session.commit()
     return {"message": "ok"}
 
+# 1. 定义修改密码的请求体模型
+class UserPasswordUpdate(SQLModel):
+    password: str
+
+# 2. 新增：管理员修改指定用户密码的接口
+@app.put("/users/{user_id}/password")
+async def reset_user_password(
+    user_id: int, 
+    req: UserPasswordUpdate, 
+    user: User = Depends(check_super_admin), # 只有超级管理员能操作
+    session: Session = Depends(get_session)
+):
+    # 查找用户
+    target_user = session.get(User, user_id)
+    if not target_user:
+        raise HTTPException(status_code=404, detail="用户不存在")
+    
+    # 修改密码 (使用 auth.py 里的哈希函数)
+    # 注意：确保你的 auth.py 里有 get_password_hash，并在 main.py 顶部引用了它
+    target_user.password_hash = get_password_hash(req.password)
+    
+    session.add(target_user)
+    session.commit()
+    
+    return {"message": f"用户 {target_user.real_name} 的密码已重置"}
+
 # ================= 通讯录 (新增公开接口) =================
 @app.get("/contacts/public")
 async def get_public_contacts(session: Session = Depends(get_session)):
