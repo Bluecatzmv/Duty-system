@@ -44,7 +44,7 @@
 
 ### 1. 克隆项目
 
-`git clone https://github.com/Bluecatzmv/duty-roster.git`
+`git clone https://github.com/Bluecatzmv/Duty-system.git`
 
 `cd duty-roster`
 
