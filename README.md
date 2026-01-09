@@ -1,4 +1,4 @@
-<img width="530" height="25" alt="image" src="https://github.com/user-attachments/assets/0c5dbfba-9660-49af-ab25-c16c9f36a3e7" /><img width="689" height="20" alt="image" src="https://github.com/user-attachments/assets/214056fb-a267-4c7f-9a6b-d94a1aca7225" /># 📅 可视化值班管理系统 (Duty System)
+# 📅 可视化值班管理系统 (Duty System)
 
 基于 FastAPI + Vue3 + Docker 的可视化值班管理系统。支持自动排班统计、企业微信通知、多维度数据分析及通讯录管理。
 > **这是一个基于实际工作需求诞生，并通过“AI协作”模式开发的项目。**
