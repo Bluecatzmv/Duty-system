@@ -126,15 +126,18 @@ async def login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()], sess
     token = create_access_token(data={"sub": user.username, "role": user.role}, expires_delta=timedelta(minutes=480))
     return {"access_token": token, "token_type": "bearer", "role": user.role}
 
-# ================= 1. 进阶统计接口 =================
+# ================= 1. 进阶统计接口 (已修改：支持部门筛选) =================
 @app.get("/stats/advanced")
-async def get_advanced_stats(year: int, session: Session = Depends(get_session)):
+async def get_advanced_stats(
+    year: int, 
+    department: Optional[str] = None, # 新增参数
+    session: Session = Depends(get_session)
+):
     start_date = date(year, 1, 1)
     end_date = date(year + 1, 1, 1)
     
     # 1. 获取所有节假日定义
     holidays = session.exec(select(Holiday).where(Holiday.date >= start_date, Holiday.date < end_date)).all()
-    # 注意：这里我们只把明确标记为“休”的日子当作不排班的节假日
     holiday_set = {h.date for h in holidays if h.type == HolidayType.HOLIDAY}
     
     # 2. 获取所有排班
@@ -142,12 +145,16 @@ async def get_advanced_stats(year: int, session: Session = Depends(get_session))
         select(Schedule).where(Schedule.date >= start_date, Schedule.date < end_date).options(selectinload(Schedule.staff))
     ).all()
     
-    # --- 模块一：周番矩阵 (排除节假日 & 按天去重) ---
+    # --- 模块一：周番矩阵 ---
     weekday_matrix = {} 
     processed_duties = set()
     
     for s in schedules:
-        if not s.staff or s.staff.department != "技术中心": continue
+        # 【核心修改】动态部门筛选
+        if not s.staff: continue
+        # 如果传了 department 且不是 "全部"，则只统计该部门；否则统计所有
+        if department and department != "全部" and s.staff.department != department: continue
+
         if s.date in holiday_set: continue
         unique_key = (s.staff_name, s.date)
         if unique_key in processed_duties: continue
@@ -182,11 +189,14 @@ async def get_advanced_stats(year: int, session: Session = Depends(get_session))
     schedule_map = defaultdict(list)
     
     for s in schedules:
-        if s.staff and s.staff.department == "技术中心":
-            if s.staff_name not in schedule_map[s.date]:
-                schedule_map[s.date].append(s.staff_name)
-            if s.date in holiday_set:
-                holiday_duty_unique_set.add((s.date, s.staff_name))
+        # 【核心修改】动态部门筛选
+        if not s.staff: continue
+        if department and department != "全部" and s.staff.department != department: continue
+
+        if s.staff_name not in schedule_map[s.date]:
+            schedule_map[s.date].append(s.staff_name)
+        if s.date in holiday_set:
+            holiday_duty_unique_set.add((s.date, s.staff_name))
 
     total_holiday_duty_count = len(holiday_duty_unique_set)
 
@@ -685,29 +695,42 @@ async def import_contacts(
     session.commit()
     return {"msg": f"新增 {cr}, 更新 {u}"}
 
-# ================= 年度统计 =================
+# ================= 年度统计 (已修改：支持部门筛选) =================
 @app.get("/stats/yearly")
-async def get_yearly_stats(year: int, session: Session = Depends(get_session)):
+async def get_yearly_stats(
+    year: int, 
+    department: Optional[str] = None, # 新增参数
+    session: Session = Depends(get_session)
+):
     start_date = date(year, 1, 1); end_date = date(year + 1, 1, 1)
     holidays_query = session.exec(select(Holiday).where(Holiday.date >= start_date, Holiday.date < end_date)).all()
-    # 统计仅关注“休”
+    
     holiday_set = {h.date for h in holidays_query if h.type == HolidayType.HOLIDAY}
     workday_set = {h.date for h in holidays_query if h.type == HolidayType.WORKDAY}
+    
     schedules = session.exec(select(Schedule).where(Schedule.date >= start_date, Schedule.date < end_date).options(selectinload(Schedule.staff))).all()
     stats = {}
+    
     for s in schedules:
-        if not s.staff or s.staff.department != "技术中心": continue
+        # 【核心修改】动态部门筛选
+        if not s.staff: continue
+        if department and department != "全部" and s.staff.department != department: continue
+        
         name = s.staff_name
         if name not in stats: stats[name] = {"name": name, "worked_dates": set(), "total": 0, "holiday_count": 0, "weekend_count": 0, "weekday_count": 0, "months": [0] * 12, "details": []}
+        
         is_holiday = s.date in holiday_set
         is_weekend = (s.date.weekday() >= 5) and (s.date not in workday_set)
+        
         if s.date not in stats[name]["worked_dates"]:
             if is_holiday: stats[name]["holiday_count"] += 1
             elif is_weekend: stats[name]["weekend_count"] += 1
             else: stats[name]["weekday_count"] += 1
             stats[name]["months"][s.date.month - 1] += 1
             stats[name]["details"].append({"date": s.date, "type": s.duty_type, "is_holiday": is_holiday, "is_weekend": is_weekend})
+            
         stats[name]["worked_dates"].add(s.date)
+        
     result_list = []
     for name, data in stats.items():
         data["total"] = len(data["worked_dates"]); del data["worked_dates"]; data["details"].sort(key=lambda x: x["date"]); result_list.append(data)
